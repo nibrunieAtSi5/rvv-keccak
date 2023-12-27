@@ -1,4 +1,5 @@
 def BfromA(x, y):
+    """ Index mapping from Matrix A to Matrix B """
     return y, (2 * x + 3 * y) % 5
 
 for j in range(5):
