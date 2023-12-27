@@ -1,5 +1,7 @@
 # rvv-keccak
-RISC-V Vector Implementation of Keccak hash function 
+RISC-V Vector Implementation of Keccak hash function.
+
+This implementation is based on C the implementation from https://github.com/XKCP/XKCP/tree/master/Standalone/CompactFIPS202/C.
 
 
 # Environment
