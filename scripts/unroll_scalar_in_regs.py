@@ -7,7 +7,7 @@ for x in range(5):
 # loop body
 # /*θ*/ FOR(x,5) C[x]=rL(x,0)^rL(x,1)^rL(x,2)^rL(x,3)^rL(x,4); FOR(x,5) { D=C[(x+4)%5]^ROL(C[(x+1)%5],1); FOR(y,5) XL(x,y,D); }
 for x in range(5):
-    print(f"u64 C_{x}= A_{x}_0 ^ A_{x}_1 ^ A_{x}_2 ^ A_{x}_3 ^ A_{x}_4;")
+    print(f"u64 C_{x} = A_{x}_0 ^ A_{x}_1 ^ A_{x}_2 ^ A_{x}_3 ^ A_{x}_4;")
 for x in range(5):
     print(f"u64 D_{x} = C_{(x+4)%5} ^ ROL(C_{(x+1)%5},1);")
     for y in range(5):
