@@ -130,12 +130,12 @@ void KeccakF1600_Round_vector(void *state, unsigned round)
     // matrix A to B
     // First 16 elements [0...15]
     vuint16m2_t B_index_0 = __riscv_vle16_v_u16m2(offset_AtoB, 16);
-    vuint64m8_t B_0 = __riscv_vluxei16_v_u64m8((uint64_t*)state, B_index_0, 16); // Note: pointer cast is not useful here
+    vuint64m8_t B_0 = __riscv_vluxei16_v_u64m8(state, B_index_0, 16);
     vuint64m8_t B_rots_0 = __riscv_vle64_v_u64m8(rotation_B, 16);
     B_0 = __riscv_vrol_vv_u64m8(B_0, B_rots_0, 16);
     // Last 9 elements [16...24]
     vuint16m2_t B_index_1 = __riscv_vle16_v_u16m2(offset_AtoB + 16, 9);
-    vuint64m8_t B_1 = __riscv_vluxei16_v_u64m8((uint64_t*)state, B_index_1, 9); // Note: pointer cast is not useful here
+    vuint64m8_t B_1 = __riscv_vluxei16_v_u64m8(state, B_index_1, 9);
     vuint64m8_t B_rots_1 = __riscv_vle64_v_u64m8(rotation_B + 16, 9);
     B_1 = __riscv_vrol_vv_u64m8(B_1, B_rots_1, 9);
     // To avoid state corruption, B partial results can only be stored once indexed load accesses
