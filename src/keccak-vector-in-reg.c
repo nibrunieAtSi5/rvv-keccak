@@ -133,6 +133,13 @@ void KeccakF1600_StatePermute_vector(void *state)
 
         /* === ρ and π steps (see [Keccak Reference, Sections 2.3.3 and 2.3.4]) === */
         {
+            // building two inputs set
+            // first set {row0[0..4], row1[0..4], row2[0..4], 0}
+            row0 = __riscv_vslideup_vx_u64m4(row0, row1, 5, 8);
+            row1 = __riscv_vslidedown_vx_u64m4(row1, 3, 3);
+            row2 = __riscv_vslideup_vx_u64m4(row1, row2, 2, 8);
+            vuint64m8_t rho_data_lo = __riscv_vcreate_v_u64m4_u64m8(row0, row2)
+            vuint64m8_t rho_data_hi = __riscv_vcreate_v_u64m4_u64m8(row3, row4);
             // indices and rotations generated with script/utils.py
             uint16_t offsetByte_AtoB[] = {
                 // byte offset for each index
@@ -142,13 +149,31 @@ void KeccakF1600_StatePermute_vector(void *state)
                 32, 40, 88, 136, 184, 
                 16, 64, 112, 120, 168, 
             };
-            uint16_t offsetIndex_AtoB[] = {
+            const uint16_t offsetIndex_AtoB[] = {
                 // index offset for each index
                 0, 6, 12, 18, 24, 
                 3, 9, 10, 16, 22, 
                 1, 7, 13, 19, 20, 
                 4, 5, 11, 17, 23, 
                 2, 8, 14, 15, 21, 
+            };
+            // index for each row (5-element) in rho_data_lo
+            const uint16_t offsetIndex_AtoB_lo[] = {
+                // index offset for each index
+                0, 6, 12, -1, -1, 
+                3, 9, 10, -1, -1, 
+                1, 7, 13, -1, -1, 
+                4, 5, 11, -1, -1, 
+                2, 8, 14, -1, -1, 
+            };
+            // index for each row (5-element) in rho_data_hi
+            const uint16_t offsetIndex_AtoB_hi[] = {
+                // index offset for each index
+                -1, -1, -1, 18 - 15, 24 - 15 + 8, 
+                -1, -1, -1, 16 - 15, 22 - 15 + 8, 
+                -1, -1, -1, 19 - 15, 20 - 15 + 8, 
+                -1, -1, -1, 17 - 15, 23 - 15 + 8, 
+                -1, -1, -1, 15 - 15, 21 - 15 + 8, 
             };
             uint64_t rotation_B[] = {
                 0, 44, 43, 21, 14, 
@@ -157,6 +182,51 @@ void KeccakF1600_StatePermute_vector(void *state)
                 27, 36, 10, 15, 56, 
                 62, 55, 39, 41, 2, 
             };
+
+            vuint16m2_t B_index_row0_lo = __riscv_vle16_v_u16m2(offsetIndex_AtoB_lo, 5);
+            vuint16m2_t B_index_row0_hi = __riscv_vle16_v_u16m2(offsetIndex_AtoB_hi, 5);
+            row0 = __riscv_vor_vv_u64m4(
+                __riscv_vrgatherei16_vv(rho_data_lo, B_index_row0_lo, 5),
+                __riscv_vrgatherei16_vv(rho_data_hi, B_index_row0_hi, 5),
+                5
+            );
+            row0 = __riscv_vrol_vv_u64m4(row0, __riscv_vle64_v_u64m4(rotation_B + 0 * 5, 5), 5);
+
+            vuint16m2_t B_index_row1_lo = __riscv_vle16_v_u16m2(offsetIndex_AtoB_lo, 5);
+            vuint16m2_t B_index_row1_hi = __riscv_vle16_v_u16m2(offsetIndex_AtoB_hi, 5);
+            row1 = __riscv_vor_vv_u64m4(
+                __riscv_vrgatherei16_vv(rho_data_lo, B_index_row1_lo, 5),
+                __riscv_vrgatherei16_vv(rho_data_hi, B_index_row1_hi, 5),
+                5
+            );
+            row1 = __riscv_vrol_vv_u64m4(row1, __riscv_vle64_v_u64m4(rotation_B + 1 * 5, 5), 5);
+
+            vuint16m2_t B_index_row2_lo = __riscv_vle16_v_u16m2(offsetIndex_AtoB_lo, 5);
+            vuint16m2_t B_index_row2_hi = __riscv_vle16_v_u16m2(offsetIndex_AtoB_hi, 5);
+            row2 = __riscv_vor_vv_u64m4(
+                __riscv_vrgatherei16_vv(rho_data_lo, B_index_row2_lo, 5),
+                __riscv_vrgatherei16_vv(rho_data_hi, B_index_row2_hi, 5),
+                5
+            );
+            row2 = __riscv_vrol_vv_u64m4(row2, __riscv_vle64_v_u64m4(rotation_B + 2 * 5, 5), 5);
+
+            vuint16m2_t B_index_row3_lo = __riscv_vle16_v_u16m2(offsetIndex_AtoB_lo, 5);
+            vuint16m2_t B_index_row3_hi = __riscv_vle16_v_u16m2(offsetIndex_AtoB_hi, 5);
+            row3 = __riscv_vor_vv_u64m4(
+                __riscv_vrgatherei16_vv(rho_data_lo, B_index_row3_lo, 5),
+                __riscv_vrgatherei16_vv(rho_data_hi, B_index_row3_hi, 5),
+                5
+            );
+            row3 = __riscv_vrol_vv_u64m4(row3, __riscv_vle64_v_u64m4(rotation_B + 3 * 5, 5), 5);
+
+            vuint16m2_t B_index_row4_lo = __riscv_vle16_v_u16m2(offsetIndex_AtoB_lo, 5);
+            vuint16m2_t B_index_row4_hi = __riscv_vle16_v_u16m2(offsetIndex_AtoB_hi, 5);
+            row4 = __riscv_vor_vv_u64m4(
+                __riscv_vrgatherei16_vv(rho_data_lo, B_index_row4_lo, 5),
+                __riscv_vrgatherei16_vv(rho_data_hi, B_index_row4_hi, 5),
+                5
+            );
+            row4 = __riscv_vrol_vv_u64m4(row4, __riscv_vle64_v_u64m4(rotation_B + 4 * 5, 5), 5);
 
             // The following assumes VLEN >= 128, and uses 2x 8-register groups to load/transpose 
             // matrix A to B
