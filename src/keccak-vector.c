@@ -72,7 +72,6 @@ const uint64_t RC[25] = {
  */
 void KeccakF1600_Round_vector(void *state, unsigned round)
 {
-    unsigned x, y, j, t;
     {   /* === θ step (see [Keccak Reference, Section 2.3.2]) === */
        vuint64m4_t row0 = __riscv_vle64_v_u64m4(((uint64_t*)state) + 0, 5);
        vuint64m4_t row1 = __riscv_vle64_v_u64m4(((uint64_t*)state) + 5, 5);
@@ -86,25 +85,20 @@ void KeccakF1600_Round_vector(void *state, unsigned round)
         vuint64m4_t C_vector = __riscv_vxor_vv_u64m4(C_23, C_014, 5);
 
         /* Compute the θ effect for all the columns */
-        uint64_t C_0 = __riscv_vmv_x_s_u64m4_u64(C_vector);
-        vuint64m4_t C_4_ext = __riscv_vslidedown_vx_u64m4(C_vector, 4, 1);   // {C[4]}
-        vuint64m4_t D_opLo = __riscv_vslide1down_vx_u64m4(C_vector, C_0, 5); // {C[1], C[2], C[3], C[4], C[0]}
-        vuint64m4_t D_opHi = __riscv_vslide1up_vx_u64m4(C_vector, 0, 5);     // {0,    C[0], C[1], C[2], C[3]}
-        D_opHi = __riscv_vxor_vv_u64m4_tu(D_opHi, D_opHi, C_4_ext, 1);
+        vuint64m4_t C_4_ext = __riscv_vslidedown_vx_u64m4(C_vector, 4, 1);       // {C[4]}
+        vuint64m4_t D_opHi = __riscv_vslideup_vx_u64m4(C_4_ext, C_vector, 1, 5); // {C[4],    C[0], C[1], C[2], C[3]}
 
-        // FIXME: intrinsics for vrol, currently not available in Docker's CLANG version 
+        vuint64m4_t D_opLo = __riscv_vslidedown_vx_u64m4(C_vector, 1, 5); // {C[1], C[2], C[3], C[4], 0}
+        D_opLo = __riscv_vslideup_vx_u64m4(D_opLo, C_vector, 4, 5);       // {C[1], C[2], C[3], C[4], C[0]}
         D_opLo = __riscv_vrol_vx_u64m4(D_opLo, 1, 5);
-        //  D_opLo = __riscv_vor_vv_u64m4(__riscv_vsll_vx_u64m4(D_opLo, 1,  5),
-        //                              __riscv_vsrl_vx_u64m4(D_opLo, 63, 5),
-        //                              5);
-        vuint64m4_t D_rvv = __riscv_vxor_vv_u64m4(D_opLo, D_opHi, 5);
+        vuint64m4_t D = __riscv_vxor_vv_u64m4(D_opLo, D_opHi, 5);
         
         /* Apply the θ effect */
-        row0 = __riscv_vxor_vv_u64m4(row0, D_rvv, 5);
-        row1 = __riscv_vxor_vv_u64m4(row1, D_rvv, 5);
-        row2 = __riscv_vxor_vv_u64m4(row2, D_rvv, 5);
-        row3 = __riscv_vxor_vv_u64m4(row3, D_rvv, 5);
-        row4 = __riscv_vxor_vv_u64m4(row4, D_rvv, 5);
+        row0 = __riscv_vxor_vv_u64m4(row0, D, 5);
+        row1 = __riscv_vxor_vv_u64m4(row1, D, 5);
+        row2 = __riscv_vxor_vv_u64m4(row2, D, 5);
+        row3 = __riscv_vxor_vv_u64m4(row3, D, 5);
+        row4 = __riscv_vxor_vv_u64m4(row4, D, 5);
 
         __riscv_vse64_v_u64m4((uint64_t*)state,      row0, 5);
         __riscv_vse64_v_u64m4((uint64_t*)state + 5,  row1, 5);
@@ -115,15 +109,8 @@ void KeccakF1600_Round_vector(void *state, unsigned round)
     }
 
     /* === ρ and π steps (see [Keccak Reference, Sections 2.3.3 and 2.3.4]) === */
-    // indices and rotations generated with keccak/utils.py
+    // indices and rotations generated with script/utils.py
     uint16_t offset_AtoB[] = {
-        /*
-        0, 6, 12, 18, 24, 
-        3, 9, 10, 16, 22, 
-        1, 7, 13, 19, 20, 
-        4, 5, 11, 17, 23, 
-        2, 8, 14, 15, 21, 
-        */ 
         // byte offset for each index
         0, 48, 96, 144, 192, 
         24, 72, 80, 128, 176, 
@@ -138,20 +125,23 @@ void KeccakF1600_Round_vector(void *state, unsigned round)
         27, 36, 10, 15, 56, 
         62, 55, 39, 41, 2, 
     };
-    uint64_t B_rotated_rvv[25];
 
-    unsigned rowId;
-    // FIXME: could be done linearly on the 25-element array (no need to split by row)
-    for (rowId = 0; rowId < 5; rowId++) {
-        vuint16m1_t index_row = __riscv_vle16_v_u16m1(offset_AtoB + 5 * rowId, 5);
-        vuint64m4_t B_row = __riscv_vluxei16_v_u64m4((uint64_t*)state, index_row, 5);
-        vuint64m4_t rots_row = __riscv_vle64_v_u64m4(rotation_B + 5 * rowId, 5);
-        B_row = __riscv_vrol_vv_u64m4(B_row, rots_row, 5);
-        __riscv_vse64_v_u64m4(B_rotated_rvv + 5 * rowId, B_row, 5);
-    }
-    // using a second array to avoid overwriting elements
-    // FIXME: to be optimized
-    memcpy(state, B_rotated_rvv, 200);
+    // The following assumes VLEN >= 128, and uses 2x 8-register groups to load/transpose 
+    // matrix A to B
+    // First 16 elements [0...15]
+    vuint16m2_t B_index_0 = __riscv_vle16_v_u16m2(offset_AtoB, 16);
+    vuint64m8_t B_0 = __riscv_vluxei16_v_u64m8(state, B_index_0, 16);
+    vuint64m8_t B_rots_0 = __riscv_vle64_v_u64m8(rotation_B, 16);
+    B_0 = __riscv_vrol_vv_u64m8(B_0, B_rots_0, 16);
+    // Last 9 elements [16...24]
+    vuint16m2_t B_index_1 = __riscv_vle16_v_u16m2(offset_AtoB + 16, 9);
+    vuint64m8_t B_1 = __riscv_vluxei16_v_u64m8(state, B_index_1, 9);
+    vuint64m8_t B_rots_1 = __riscv_vle64_v_u64m8(rotation_B + 16, 9);
+    B_1 = __riscv_vrol_vv_u64m8(B_1, B_rots_1, 9);
+    // To avoid state corruption, B partial results can only be stored once indexed load accesses
+    // have all been completed.
+    __riscv_vse64_v_u64m8((uint64_t*)state, B_0, 16);
+    __riscv_vse64_v_u64m8((uint64_t*)state + 16, B_1, 9);
 
     /* === χ step (see [Keccak Reference, Section 2.3.1]) === */
     {

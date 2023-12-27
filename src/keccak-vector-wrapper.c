@@ -215,7 +215,7 @@ int LFSR86540(uint8_t *LFSR)
 
 
 
-extern unsigned long totalEvts, nCalls;
+extern unsigned long totalEvts, nCalls, minLatency, maxLatency;
 
 /** return the value of the instret counter
  *
@@ -240,14 +240,18 @@ void KeccakF1600_StatePermute_vector(void *state)
 {
     unsigned int round;
 
-    unsigned long start, stop;
-    start = read_instret();
     for(round=0; round<24; round++) {
+        unsigned long start, stop;
+        start = read_instret();
         KeccakF1600_Round_vector(state, round);
+        stop = read_instret();
+        long cycleCnt = (stop - start);
+        nCalls++;
+        totalEvts += cycleCnt;
+        if (cycleCnt < minLatency) minLatency = cycleCnt;
+        if (cycleCnt > maxLatency) maxLatency = cycleCnt;
+
     }
-    stop = read_instret();
-    nCalls += 24;
-    totalEvts += (stop - start);
 }
 
 void KeccakF1600_StatePermute(void *state)

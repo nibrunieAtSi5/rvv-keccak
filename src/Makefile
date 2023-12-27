@@ -3,7 +3,7 @@
 # RISC-V C Compiler
 # available options (the version used must support RVV intrinsics)
 # clang/llvm
-CLANG_EXTRA_EXTS=_zvbb1p0
+CLANG_EXTRA_EXTS=_zvbb1p0_zbb_zbc_zba
 RISCVCC=clang  --target=riscv64 -I/opt/riscv/riscv64-unknown-elf/include/
 # GNU Compiler Collection (GCC)
 # RISCVCC=riscv64-unknown-elf-gcc 
@@ -19,7 +19,7 @@ PK_PATH=/opt/riscv/riscv64-unknown-elf/bin/pk64
 
 # SIMULATOR
 # Available options in the Docker (uncomment one)
-SIMULATOR=spike --isa=rv64gcv_zicntr_zihpm_zvbb --varch=vlen:$(VLEN),elen:64 $(PK_PATH)
+SIMULATOR=spike --isa=rv64gcv_zicntr_zihpm_zvbb_zbb_zbc_zba --varch=vlen:$(VLEN),elen:64 $(PK_PATH)
 # SIMULATOR=qemu-riscv64 -perfmap -cpu rv64,zba=true,v=on,vext_spec=v1.0,vlen=128,rvv_ta_all_1s=on
 
 CFLAGS ?= -O2

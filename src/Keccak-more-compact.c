@@ -21,7 +21,7 @@ static void xor64(u8 *x, u64 u) { ui i; FOR(i,8) { x[i]^=u; u>>=8; } }
 #define wL(x,y,l) store64((u8*)s+8*(x+5*y),l)
 #define XL(x,y,l) xor64((u8*)s+8*(x+5*y),l)
 
-extern unsigned long totalEvts, nCalls;
+extern unsigned long totalEvts, nCalls, minLatency, maxLatency;
 
 /** return the value of the instret counter
  *
@@ -46,8 +46,11 @@ void KeccakF1600(void *s)
         /*ι*/ FOR(j,7) if (LFSR86540(&R)) XL(0,0,(u64)1<<((1<<j)-1));
     }
     stop = read_instret();
+    long cycleCnt = (stop - start);
     nCalls += 24;
-    totalEvts += (stop - start);
+    totalEvts += cycleCnt;
+    if (cycleCnt < minLatency) minLatency = cycleCnt;
+    if (cycleCnt > maxLatency) maxLatency = cycleCnt;
 }
 void Keccak(ui r, ui c, const u8 *in, u64 inLen, u8 sfx, u8 *out, u64 outLen)
 {

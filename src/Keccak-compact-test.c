@@ -15,6 +15,8 @@ http://creativecommons.org/publicdomain/zero/1.0/
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <limits.h>
+
 
 #ifdef VERBOSE
 #include <stdio.h>
@@ -108,6 +110,7 @@ void testKeccakInstanceBitLevel(unsigned int rate, unsigned int capacity, const 
 #endif
 
 unsigned long totalEvts = 0, nCalls = 0;
+unsigned long minLatency = ULONG_MAX, maxLatency = 0;
 
 void performTestByteLevel(unsigned int rate, unsigned int capacity, unsigned char delimitedSuffix, unsigned int outputByteLength, unsigned char *checksum)
 {
@@ -169,6 +172,8 @@ void performTestByteLevel(unsigned int rate, unsigned int capacity, unsigned cha
 #endif
     printf("%ld Keccak call(s) executed %ld instruction(s).\n", nCalls, totalEvts);
     printf("    - %.3e instruction(s) per call\n", totalEvts / (double) nCalls);
+    printf("    - min %ld instruction(s)\n", minLatency);
+    printf("    - max %ld instruction(s)\n", maxLatency);
 }
 
 void testKeccakInstanceByteLevel(unsigned int rate, unsigned int capacity, unsigned char delimitedSuffix, unsigned int outputByteLength, const unsigned char *expected)
