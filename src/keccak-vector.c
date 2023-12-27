@@ -115,15 +115,8 @@ void KeccakF1600_Round_vector(void *state, unsigned round)
     }
 
     /* === ρ and π steps (see [Keccak Reference, Sections 2.3.3 and 2.3.4]) === */
-    // indices and rotations generated with keccak/utils.py
+    // indices and rotations generated with script/utils.py
     uint16_t offset_AtoB[] = {
-        /*
-        0, 6, 12, 18, 24, 
-        3, 9, 10, 16, 22, 
-        1, 7, 13, 19, 20, 
-        4, 5, 11, 17, 23, 
-        2, 8, 14, 15, 21, 
-        */ 
         // byte offset for each index
         0, 48, 96, 144, 192, 
         24, 72, 80, 128, 176, 
@@ -138,20 +131,23 @@ void KeccakF1600_Round_vector(void *state, unsigned round)
         27, 36, 10, 15, 56, 
         62, 55, 39, 41, 2, 
     };
-    uint64_t B_rotated_rvv[25];
 
-    unsigned rowId;
-    // FIXME: could be done linearly on the 25-element array (no need to split by row)
-    for (rowId = 0; rowId < 5; rowId++) {
-        vuint16m1_t index_row = __riscv_vle16_v_u16m1(offset_AtoB + 5 * rowId, 5);
-        vuint64m4_t B_row = __riscv_vluxei16_v_u64m4((uint64_t*)state, index_row, 5);
-        vuint64m4_t rots_row = __riscv_vle64_v_u64m4(rotation_B + 5 * rowId, 5);
-        B_row = __riscv_vrol_vv_u64m4(B_row, rots_row, 5);
-        __riscv_vse64_v_u64m4(B_rotated_rvv + 5 * rowId, B_row, 5);
-    }
-    // using a second array to avoid overwriting elements
-    // FIXME: to be optimized
-    memcpy(state, B_rotated_rvv, 200);
+    // The following assumes VLEN >= 128, and uses 2 8-register groups to load/transpose 
+    // matrix A to B
+    // First 16 elements [0...15]
+    vuint16m2_t B_index_0 = __riscv_vle16_v_u16m2(offset_AtoB, 16);
+    vuint64m8_t B_0 = __riscv_vluxei16_v_u64m8((uint64_t*)state, B_index_0, 16); // Note: pointer cast is not useful here
+    vuint64m8_t B_rots_0 = __riscv_vle64_v_u64m8(rotation_B, 16);
+    B_0 = __riscv_vrol_vv_u64m8(B_0, B_rots_0, 16);
+    // Last 9 elements [16...24]
+    vuint16m2_t B_index_1 = __riscv_vle16_v_u16m2(offset_AtoB + 16, 9);
+    vuint64m8_t B_1 = __riscv_vluxei16_v_u64m8((uint64_t*)state, B_index_1, 9); // Note: pointer cast is not useful here
+    vuint64m8_t B_rots_1 = __riscv_vle64_v_u64m8(rotation_B + 16, 9);
+    B_1 = __riscv_vrol_vv_u64m8(B_1, B_rots_1, 9);
+    // To avoid state corruption, B partial results can only be stored once indexed load accesses
+    // have all been completed.
+    __riscv_vse64_v_u64m8((uint64_t*)state, B_0, 16);
+    __riscv_vse64_v_u64m8((uint64_t*)state + 16, B_1, 9);
 
     /* === χ step (see [Keccak Reference, Section 2.3.1]) === */
     {
