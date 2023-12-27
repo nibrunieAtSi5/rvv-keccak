@@ -72,7 +72,6 @@ const uint64_t RC[25] = {
  */
 void KeccakF1600_Round_vector(void *state, unsigned round)
 {
-    unsigned x, y, j, t;
     {   /* === θ step (see [Keccak Reference, Section 2.3.2]) === */
        vuint64m4_t row0 = __riscv_vle64_v_u64m4(((uint64_t*)state) + 0, 5);
        vuint64m4_t row1 = __riscv_vle64_v_u64m4(((uint64_t*)state) + 5, 5);
@@ -86,25 +85,20 @@ void KeccakF1600_Round_vector(void *state, unsigned round)
         vuint64m4_t C_vector = __riscv_vxor_vv_u64m4(C_23, C_014, 5);
 
         /* Compute the θ effect for all the columns */
-        uint64_t C_0 = __riscv_vmv_x_s_u64m4_u64(C_vector);
-        vuint64m4_t C_4_ext = __riscv_vslidedown_vx_u64m4(C_vector, 4, 1);   // {C[4]}
-        vuint64m4_t D_opLo = __riscv_vslide1down_vx_u64m4(C_vector, C_0, 5); // {C[1], C[2], C[3], C[4], C[0]}
-        vuint64m4_t D_opHi = __riscv_vslide1up_vx_u64m4(C_vector, 0, 5);     // {0,    C[0], C[1], C[2], C[3]}
-        D_opHi = __riscv_vxor_vv_u64m4_tu(D_opHi, D_opHi, C_4_ext, 1);
+        vuint64m4_t C_4_ext = __riscv_vslidedown_vx_u64m4(C_vector, 4, 1);       // {C[4]}
+        vuint64m4_t D_opHi = __riscv_vslideup_vx_u64m4(C_4_ext, C_vector, 1, 5); // {C[4],    C[0], C[1], C[2], C[3]}
 
-        // FIXME: intrinsics for vrol, currently not available in Docker's CLANG version 
+        vuint64m4_t D_opLo = __riscv_vslidedown_vx_u64m4(C_vector, 1, 5); // {C[1], C[2], C[3], C[4], 0}
+        D_opLo = __riscv_vslideup_vx_u64m4(D_opLo, C_vector, 4, 5);       // {C[1], C[2], C[3], C[4], C[0]}
         D_opLo = __riscv_vrol_vx_u64m4(D_opLo, 1, 5);
-        //  D_opLo = __riscv_vor_vv_u64m4(__riscv_vsll_vx_u64m4(D_opLo, 1,  5),
-        //                              __riscv_vsrl_vx_u64m4(D_opLo, 63, 5),
-        //                              5);
-        vuint64m4_t D_rvv = __riscv_vxor_vv_u64m4(D_opLo, D_opHi, 5);
+        vuint64m4_t D = __riscv_vxor_vv_u64m4(D_opLo, D_opHi, 5);
         
         /* Apply the θ effect */
-        row0 = __riscv_vxor_vv_u64m4(row0, D_rvv, 5);
-        row1 = __riscv_vxor_vv_u64m4(row1, D_rvv, 5);
-        row2 = __riscv_vxor_vv_u64m4(row2, D_rvv, 5);
-        row3 = __riscv_vxor_vv_u64m4(row3, D_rvv, 5);
-        row4 = __riscv_vxor_vv_u64m4(row4, D_rvv, 5);
+        row0 = __riscv_vxor_vv_u64m4(row0, D, 5);
+        row1 = __riscv_vxor_vv_u64m4(row1, D, 5);
+        row2 = __riscv_vxor_vv_u64m4(row2, D, 5);
+        row3 = __riscv_vxor_vv_u64m4(row3, D, 5);
+        row4 = __riscv_vxor_vv_u64m4(row4, D, 5);
 
         __riscv_vse64_v_u64m4((uint64_t*)state,      row0, 5);
         __riscv_vse64_v_u64m4((uint64_t*)state + 5,  row1, 5);
@@ -132,7 +126,7 @@ void KeccakF1600_Round_vector(void *state, unsigned round)
         62, 55, 39, 41, 2, 
     };
 
-    // The following assumes VLEN >= 128, and uses 2 8-register groups to load/transpose 
+    // The following assumes VLEN >= 128, and uses 2x 8-register groups to load/transpose 
     // matrix A to B
     // First 16 elements [0...15]
     vuint16m2_t B_index_0 = __riscv_vle16_v_u16m2(offset_AtoB, 16);
