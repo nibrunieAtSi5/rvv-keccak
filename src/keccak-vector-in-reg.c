@@ -123,12 +123,6 @@ void KeccakF1600_StatePermute_vector(void *state)
             row3 = __riscv_vxor_vv_u64m4(row3, D, 5);
             row4 = __riscv_vxor_vv_u64m4(row4, D, 5);
 
-            __riscv_vse64_v_u64m4((uint64_t*)state,      row0, 5);
-            __riscv_vse64_v_u64m4((uint64_t*)state + 5,  row1, 5);
-            __riscv_vse64_v_u64m4((uint64_t*)state + 10, row2, 5);
-            __riscv_vse64_v_u64m4((uint64_t*)state + 15, row3, 5);
-            __riscv_vse64_v_u64m4((uint64_t*)state + 20, row4, 5);
-
         }
 
         /* === ρ and π steps (see [Keccak Reference, Sections 2.3.3 and 2.3.4]) === */
@@ -138,7 +132,8 @@ void KeccakF1600_StatePermute_vector(void *state)
             row0 = __riscv_vslideup_vx_u64m4(row0, row1, 5, 8);
             row1 = __riscv_vslidedown_vx_u64m4(row1, 3, 3);
             row2 = __riscv_vslideup_vx_u64m4(row1, row2, 2, 8);
-            vuint64m8_t rho_data_lo = __riscv_vcreate_v_u64m4_u64m8(row0, row2)
+            vuint64m8_t rho_data_lo = __riscv_vcreate_v_u64m4_u64m8(row0, row2);
+            // second set {row3[0..4], 0, 0, 0, row4[0..4], 0, 0, 0}
             vuint64m8_t rho_data_hi = __riscv_vcreate_v_u64m4_u64m8(row3, row4);
             // indices and rotations generated with script/utils.py
             uint16_t offsetByte_AtoB[] = {
@@ -158,6 +153,7 @@ void KeccakF1600_StatePermute_vector(void *state)
                 2, 8, 14, 15, 21, 
             };
             // index for each row (5-element) in rho_data_lo
+            // Note: -1 value triggers an index overflow (vrgather(ei16) will fill in the result element with 0)
             const uint16_t offsetIndex_AtoB_lo[] = {
                 // index offset for each index
                 0, 6, 12, -1, -1, 
@@ -167,13 +163,14 @@ void KeccakF1600_StatePermute_vector(void *state)
                 2, 8, 14, -1, -1, 
             };
             // index for each row (5-element) in rho_data_hi
+            // Note: -1 value triggers an index overflow (vrgather(ei16) will fill in the result element with 0)
             const uint16_t offsetIndex_AtoB_hi[] = {
                 // index offset for each index
-                -1, -1, -1, 18 - 15, 24 - 15 + 8, 
-                -1, -1, -1, 16 - 15, 22 - 15 + 8, 
-                -1, -1, -1, 19 - 15, 20 - 15 + 8, 
-                -1, -1, -1, 17 - 15, 23 - 15 + 8, 
-                -1, -1, -1, 15 - 15, 21 - 15 + 8, 
+                -1, -1, -1, 18 - 15, 24 - 20 + 8, 
+                -1, -1, -1, 16 - 15, 22 - 20 + 8, 
+                -1, -1, -1, 19 - 15, 20 - 20 + 8, 
+                -1, -1, -1, 17 - 15, 23 - 20 + 8, 
+                -1, -1, -1, 15 - 15, 21 - 20 + 8, 
             };
             uint64_t rotation_B[] = {
                 0, 44, 43, 21, 14, 
@@ -186,70 +183,52 @@ void KeccakF1600_StatePermute_vector(void *state)
             vuint16m2_t B_index_row0_lo = __riscv_vle16_v_u16m2(offsetIndex_AtoB_lo, 5);
             vuint16m2_t B_index_row0_hi = __riscv_vle16_v_u16m2(offsetIndex_AtoB_hi, 5);
             row0 = __riscv_vor_vv_u64m4(
-                __riscv_vrgatherei16_vv(rho_data_lo, B_index_row0_lo, 5),
-                __riscv_vrgatherei16_vv(rho_data_hi, B_index_row0_hi, 5),
+                __riscv_vget_v_u64m8_u64m4(__riscv_vrgatherei16_vv_u64m8(rho_data_lo, B_index_row0_lo, 5), 0),
+                __riscv_vget_v_u64m8_u64m4(__riscv_vrgatherei16_vv_u64m8(rho_data_hi, B_index_row0_hi, 5), 0),
                 5
             );
             row0 = __riscv_vrol_vv_u64m4(row0, __riscv_vle64_v_u64m4(rotation_B + 0 * 5, 5), 5);
 
-            vuint16m2_t B_index_row1_lo = __riscv_vle16_v_u16m2(offsetIndex_AtoB_lo, 5);
-            vuint16m2_t B_index_row1_hi = __riscv_vle16_v_u16m2(offsetIndex_AtoB_hi, 5);
+            vuint16m2_t B_index_row1_lo = __riscv_vle16_v_u16m2(offsetIndex_AtoB_lo + 5, 5);
+            vuint16m2_t B_index_row1_hi = __riscv_vle16_v_u16m2(offsetIndex_AtoB_hi + 5, 5);
             row1 = __riscv_vor_vv_u64m4(
-                __riscv_vrgatherei16_vv(rho_data_lo, B_index_row1_lo, 5),
-                __riscv_vrgatherei16_vv(rho_data_hi, B_index_row1_hi, 5),
+                __riscv_vget_v_u64m8_u64m4(__riscv_vrgatherei16_vv_u64m8(rho_data_lo, B_index_row1_lo, 5), 0),
+                __riscv_vget_v_u64m8_u64m4(__riscv_vrgatherei16_vv_u64m8(rho_data_hi, B_index_row1_hi, 5), 0),
                 5
             );
             row1 = __riscv_vrol_vv_u64m4(row1, __riscv_vle64_v_u64m4(rotation_B + 1 * 5, 5), 5);
 
-            vuint16m2_t B_index_row2_lo = __riscv_vle16_v_u16m2(offsetIndex_AtoB_lo, 5);
-            vuint16m2_t B_index_row2_hi = __riscv_vle16_v_u16m2(offsetIndex_AtoB_hi, 5);
+            vuint16m2_t B_index_row2_lo = __riscv_vle16_v_u16m2(offsetIndex_AtoB_lo + 10, 5);
+            vuint16m2_t B_index_row2_hi = __riscv_vle16_v_u16m2(offsetIndex_AtoB_hi + 10, 5);
             row2 = __riscv_vor_vv_u64m4(
-                __riscv_vrgatherei16_vv(rho_data_lo, B_index_row2_lo, 5),
-                __riscv_vrgatherei16_vv(rho_data_hi, B_index_row2_hi, 5),
+                __riscv_vget_v_u64m8_u64m4(__riscv_vrgatherei16_vv_u64m8(rho_data_lo, B_index_row2_lo, 5), 0),
+                __riscv_vget_v_u64m8_u64m4(__riscv_vrgatherei16_vv_u64m8(rho_data_hi, B_index_row2_hi, 5), 0),
                 5
             );
             row2 = __riscv_vrol_vv_u64m4(row2, __riscv_vle64_v_u64m4(rotation_B + 2 * 5, 5), 5);
 
-            vuint16m2_t B_index_row3_lo = __riscv_vle16_v_u16m2(offsetIndex_AtoB_lo, 5);
-            vuint16m2_t B_index_row3_hi = __riscv_vle16_v_u16m2(offsetIndex_AtoB_hi, 5);
+            vuint16m2_t B_index_row3_lo = __riscv_vle16_v_u16m2(offsetIndex_AtoB_lo + 15, 5);
+            vuint16m2_t B_index_row3_hi = __riscv_vle16_v_u16m2(offsetIndex_AtoB_hi + 15, 5);
             row3 = __riscv_vor_vv_u64m4(
-                __riscv_vrgatherei16_vv(rho_data_lo, B_index_row3_lo, 5),
-                __riscv_vrgatherei16_vv(rho_data_hi, B_index_row3_hi, 5),
+                __riscv_vget_v_u64m8_u64m4(__riscv_vrgatherei16_vv_u64m8(rho_data_lo, B_index_row3_lo, 5), 0),
+                __riscv_vget_v_u64m8_u64m4(__riscv_vrgatherei16_vv_u64m8(rho_data_hi, B_index_row3_hi, 5), 0),
                 5
             );
             row3 = __riscv_vrol_vv_u64m4(row3, __riscv_vle64_v_u64m4(rotation_B + 3 * 5, 5), 5);
 
-            vuint16m2_t B_index_row4_lo = __riscv_vle16_v_u16m2(offsetIndex_AtoB_lo, 5);
-            vuint16m2_t B_index_row4_hi = __riscv_vle16_v_u16m2(offsetIndex_AtoB_hi, 5);
+            vuint16m2_t B_index_row4_lo = __riscv_vle16_v_u16m2(offsetIndex_AtoB_lo + 20, 5);
+            vuint16m2_t B_index_row4_hi = __riscv_vle16_v_u16m2(offsetIndex_AtoB_hi + 20, 5);
             row4 = __riscv_vor_vv_u64m4(
-                __riscv_vrgatherei16_vv(rho_data_lo, B_index_row4_lo, 5),
-                __riscv_vrgatherei16_vv(rho_data_hi, B_index_row4_hi, 5),
+                __riscv_vget_v_u64m8_u64m4(__riscv_vrgatherei16_vv_u64m8(rho_data_lo, B_index_row4_lo, 5), 0),
+                __riscv_vget_v_u64m8_u64m4(__riscv_vrgatherei16_vv_u64m8(rho_data_hi, B_index_row4_hi, 5), 0),
                 5
             );
             row4 = __riscv_vrol_vv_u64m4(row4, __riscv_vle64_v_u64m4(rotation_B + 4 * 5, 5), 5);
-
-            // The following assumes VLEN >= 128, and uses 2x 8-register groups to load/transpose 
-            // matrix A to B
-            // First 16 elements [0...15]
-            vuint16m2_t B_index_0 = __riscv_vle16_v_u16m2(offsetByte_AtoB, 16);
-            vuint64m8_t B_0 = __riscv_vluxei16_v_u64m8(state, B_index_0, 16);
-            vuint64m8_t B_rots_0 = __riscv_vle64_v_u64m8(rotation_B, 16);
-            B_0 = __riscv_vrol_vv_u64m8(B_0, B_rots_0, 16);
-            // Last 9 elements [16...24]
-            vuint16m2_t B_index_1 = __riscv_vle16_v_u16m2(offsetByte_AtoB + 16, 9);
-            vuint64m8_t B_1 = __riscv_vluxei16_v_u64m8(state, B_index_1, 9);
-            vuint64m8_t B_rots_1 = __riscv_vle64_v_u64m8(rotation_B + 16, 9);
-            B_1 = __riscv_vrol_vv_u64m8(B_1, B_rots_1, 9);
-            // To avoid state corruption, B partial results can only be stored once indexed load accesses
-            // have all been completed.
-            __riscv_vse64_v_u64m8((uint64_t*)state, B_0, 16);
-            __riscv_vse64_v_u64m8((uint64_t*)state + 16, B_1, 9);
 
 
         }
         /* === χ step (see [Keccak Reference, Section 2.3.1]) === */
         {
-            row0 = __riscv_vle64_v_u64m4(((uint64_t*)state) + 0 * 5, 5);
             vuint64m4_t row0_xp1 = __riscv_vslidedown_vx_u64m4(row0, 1, 4);   // {row[1], row[2], row[3], row{4}}
             vuint64m4_t row0_xp2 = __riscv_vslidedown_vx_u64m4(row0, 2, 3);   // {row[2], row[3], row[4]}
             row0_xp1 = __riscv_vslideup_vx_u64m4(row0_xp1, row0, 4, 5); // {row[1], row[2], row[3], row[4], row[0]}
@@ -259,28 +238,24 @@ void KeccakF1600_StatePermute_vector(void *state)
             /* === ι step (see [Keccak Reference, Section 2.3.5]) === */
             row0 = __riscv_vxor_vx_u64m4_tu(row0, row0, RC[round], 1);
 
-            row1 = __riscv_vle64_v_u64m4(((uint64_t*)state) + 1 * 5, 5);
             vuint64m4_t row1_xp1 = __riscv_vslidedown_vx_u64m4(row1, 1, 4);   // {row[1], row[2], row[3], row{4}}
             vuint64m4_t row1_xp2 = __riscv_vslidedown_vx_u64m4(row1, 2, 3);   // {row[2], row[3], row[4]}
             row1_xp1 = __riscv_vslideup_vx_u64m4(row1_xp1, row1, 4, 5); // {row[1], row[2], row[3], row[4], row[0]}
             row1_xp2 = __riscv_vslideup_vx_u64m4(row1_xp2, row1, 3, 5); // {row[2], row[3], row[4], row[0], row[1]}
             row1 = __riscv_vxor_vv_u64m4(row1, __riscv_vandn_vv_u64m4(row1_xp2, row1_xp1, 5), 5);
 
-            row2 = __riscv_vle64_v_u64m4(((uint64_t*)state) + 2 * 5, 5);
             vuint64m4_t row2_xp1 = __riscv_vslidedown_vx_u64m4(row2, 1, 4);   // {row[1], row[2], row[3], row{4}}
             vuint64m4_t row2_xp2 = __riscv_vslidedown_vx_u64m4(row2, 2, 3);   // {row[2], row[3], row[4]}
             row2_xp1 = __riscv_vslideup_vx_u64m4(row2_xp1, row2, 4, 5); // {row[1], row[2], row[3], row[4], row[0]}
             row2_xp2 = __riscv_vslideup_vx_u64m4(row2_xp2, row2, 3, 5); // {row[2], row[3], row[4], row[0], row[1]}
             row2 = __riscv_vxor_vv_u64m4(row2, __riscv_vandn_vv_u64m4(row2_xp2, row2_xp1, 5), 5);
 
-            row3 = __riscv_vle64_v_u64m4(((uint64_t*)state) + 3 * 5, 5);
             vuint64m4_t row3_xp1 = __riscv_vslidedown_vx_u64m4(row3, 1, 4);   // {row[1], row[2], row[3], row{4}}
             vuint64m4_t row3_xp2 = __riscv_vslidedown_vx_u64m4(row3, 2, 3);   // {row[2], row[3], row[4]}
             row3_xp1 = __riscv_vslideup_vx_u64m4(row3_xp1, row3, 4, 5); // {row[1], row[2], row[3], row[4], row[0]}
             row3_xp2 = __riscv_vslideup_vx_u64m4(row3_xp2, row3, 3, 5); // {row[2], row[3], row[4], row[0], row[1]}
             row3 = __riscv_vxor_vv_u64m4(row3, __riscv_vandn_vv_u64m4(row3_xp2, row3_xp1, 5), 5);
 
-            row4 = __riscv_vle64_v_u64m4(((uint64_t*)state) + 4 * 5, 5);
             vuint64m4_t row4_xp1 = __riscv_vslidedown_vx_u64m4(row4, 1, 4);   // {row[1], row[2], row[3], row{4}}
             vuint64m4_t row4_xp2 = __riscv_vslidedown_vx_u64m4(row4, 2, 3);   // {row[2], row[3], row[4]}
             row4_xp1 = __riscv_vslideup_vx_u64m4(row4_xp1, row4, 4, 5); // {row[1], row[2], row[3], row[4], row[0]}
