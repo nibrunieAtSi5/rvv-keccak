@@ -26,12 +26,12 @@ This repository contains multiple implementations of the `Keccak` function.
 
 - Baseline very compact implementation in `Keccak-more-compact.c`
 - Baseline readable implementation in `Keccak-readable-and-compact.c`
-- RVV based implementation in `keccak-vector.c`
+- RVV based implementation in `keccak-vector-wrapper.c` (actual implementation is in `keccak-vector.c`)
 
 
 Those implementations can be selected by setting the `KECCAK_SRC` variable to the corresponding source file when building and running the benchmark.
 For example:
 
 ```
-make sim_bench_keccak KECCAK_SRC=keccak-vector.c
+make sim_bench_keccak KECCAK_SRC=keccak-vector.c KECCAK_WRAPPER_SRC=keccak-vector-wrapper.c
 ```
