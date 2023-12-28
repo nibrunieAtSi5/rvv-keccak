@@ -229,37 +229,31 @@ void KeccakF1600_StatePermute_vector(void *state)
         }
         /* === χ step (see [Keccak Reference, Section 2.3.1]) === */
         {
-            vuint64m4_t row0_xp1 = __riscv_vslidedown_vx_u64m4(row0, 1, 4);   // {row[1], row[2], row[3], row{4}}
-            vuint64m4_t row0_xp2 = __riscv_vslidedown_vx_u64m4(row0, 2, 3);   // {row[2], row[3], row[4]}
-            row0_xp1 = __riscv_vslideup_vx_u64m4(row0_xp1, row0, 4, 5); // {row[1], row[2], row[3], row[4], row[0]}
-            row0_xp2 = __riscv_vslideup_vx_u64m4(row0_xp2, row0, 3, 5); // {row[2], row[3], row[4], row[0], row[1]}
+            const uint16_t xp1_indices_buf[5] = {1, 2, 3, 4, 0};
+            const uint16_t xp2_indices_buf[5] = {2, 3, 4, 0, 1};
+            vuint16m1_t xp1_indices = __riscv_vle16_v_u16m1(xp1_indices_buf, 5); 
+            vuint16m1_t xp2_indices = __riscv_vle16_v_u16m1(xp2_indices_buf, 5); 
+            vuint64m4_t row0_xp1 = __riscv_vrgatherei16_vv_u64m4(row0, xp1_indices, 5);
+            vuint64m4_t row0_xp2 = __riscv_vrgatherei16_vv_u64m4(row0, xp2_indices, 5);
             row0 = __riscv_vxor_vv_u64m4(row0, __riscv_vandn_vv_u64m4(row0_xp2, row0_xp1, 5), 5);
 
             /* === ι step (see [Keccak Reference, Section 2.3.5]) === */
             row0 = __riscv_vxor_vx_u64m4_tu(row0, row0, RC[round], 1);
 
-            vuint64m4_t row1_xp1 = __riscv_vslidedown_vx_u64m4(row1, 1, 4);   // {row[1], row[2], row[3], row{4}}
-            vuint64m4_t row1_xp2 = __riscv_vslidedown_vx_u64m4(row1, 2, 3);   // {row[2], row[3], row[4]}
-            row1_xp1 = __riscv_vslideup_vx_u64m4(row1_xp1, row1, 4, 5); // {row[1], row[2], row[3], row[4], row[0]}
-            row1_xp2 = __riscv_vslideup_vx_u64m4(row1_xp2, row1, 3, 5); // {row[2], row[3], row[4], row[0], row[1]}
+            vuint64m4_t row1_xp1 = __riscv_vrgatherei16_vv_u64m4(row1, xp1_indices, 5);
+            vuint64m4_t row1_xp2 = __riscv_vrgatherei16_vv_u64m4(row1, xp2_indices, 5);
             row1 = __riscv_vxor_vv_u64m4(row1, __riscv_vandn_vv_u64m4(row1_xp2, row1_xp1, 5), 5);
 
-            vuint64m4_t row2_xp1 = __riscv_vslidedown_vx_u64m4(row2, 1, 4);   // {row[1], row[2], row[3], row{4}}
-            vuint64m4_t row2_xp2 = __riscv_vslidedown_vx_u64m4(row2, 2, 3);   // {row[2], row[3], row[4]}
-            row2_xp1 = __riscv_vslideup_vx_u64m4(row2_xp1, row2, 4, 5); // {row[1], row[2], row[3], row[4], row[0]}
-            row2_xp2 = __riscv_vslideup_vx_u64m4(row2_xp2, row2, 3, 5); // {row[2], row[3], row[4], row[0], row[1]}
+            vuint64m4_t row2_xp1 = __riscv_vrgatherei16_vv_u64m4(row2, xp1_indices, 5);
+            vuint64m4_t row2_xp2 = __riscv_vrgatherei16_vv_u64m4(row2, xp2_indices, 5);
             row2 = __riscv_vxor_vv_u64m4(row2, __riscv_vandn_vv_u64m4(row2_xp2, row2_xp1, 5), 5);
 
-            vuint64m4_t row3_xp1 = __riscv_vslidedown_vx_u64m4(row3, 1, 4);   // {row[1], row[2], row[3], row{4}}
-            vuint64m4_t row3_xp2 = __riscv_vslidedown_vx_u64m4(row3, 2, 3);   // {row[2], row[3], row[4]}
-            row3_xp1 = __riscv_vslideup_vx_u64m4(row3_xp1, row3, 4, 5); // {row[1], row[2], row[3], row[4], row[0]}
-            row3_xp2 = __riscv_vslideup_vx_u64m4(row3_xp2, row3, 3, 5); // {row[2], row[3], row[4], row[0], row[1]}
+            vuint64m4_t row3_xp1 = __riscv_vrgatherei16_vv_u64m4(row3, xp1_indices, 5);
+            vuint64m4_t row3_xp2 = __riscv_vrgatherei16_vv_u64m4(row3, xp2_indices, 5);
             row3 = __riscv_vxor_vv_u64m4(row3, __riscv_vandn_vv_u64m4(row3_xp2, row3_xp1, 5), 5);
 
-            vuint64m4_t row4_xp1 = __riscv_vslidedown_vx_u64m4(row4, 1, 4);   // {row[1], row[2], row[3], row{4}}
-            vuint64m4_t row4_xp2 = __riscv_vslidedown_vx_u64m4(row4, 2, 3);   // {row[2], row[3], row[4]}
-            row4_xp1 = __riscv_vslideup_vx_u64m4(row4_xp1, row4, 4, 5); // {row[1], row[2], row[3], row[4], row[0]}
-            row4_xp2 = __riscv_vslideup_vx_u64m4(row4_xp2, row4, 3, 5); // {row[2], row[3], row[4], row[0], row[1]}
+            vuint64m4_t row4_xp1 = __riscv_vrgatherei16_vv_u64m4(row4, xp1_indices, 5);
+            vuint64m4_t row4_xp2 = __riscv_vrgatherei16_vv_u64m4(row4, xp2_indices, 5);
             row4 = __riscv_vxor_vv_u64m4(row4, __riscv_vandn_vv_u64m4(row4_xp2, row4_xp1, 5), 5);
         }
     }
