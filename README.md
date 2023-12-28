@@ -26,6 +26,7 @@ This repository contains multiple implementations of the `Keccak` function.
 
 - Baseline very compact implementation in `Keccak-more-compact.c`
 - Optimized (unrolled) compact implementation in `Keccak-more-compact-opt.c`
+- Optimized (unrolled with less memory accesses) compact implementation in `Keccak-more-compact-opt-in-regs.c`
 - Baseline readable implementation in `Keccak-readable-and-compact.c`
 - RVV based implementation in `keccak-vector-wrapper.c` (actual implementation is in `keccak-vector.c`)
 

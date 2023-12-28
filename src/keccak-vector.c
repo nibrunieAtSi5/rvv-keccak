@@ -168,3 +168,42 @@ void KeccakF1600_Round_vector(void *state, unsigned round)
         }
     }
 }
+
+/** return the value of the instret counter
+ *
+ *  The instret counter counts the number of retired (executed) instructions.
+*/
+static unsigned long read_instret(void)
+{
+  unsigned long instret;
+  asm volatile ("rdinstret %0" : "=r" (instret));
+  return instret;
+}
+
+/** Declaration of RVV implementation of Keccak-F1600 round function 
+ *
+ * @param state input/output 1600-bit state 
+ * @param round round index (must verify 0 <= round < 24)
+ *
+*/
+void KeccakF1600_Round_vector(void *state, unsigned round);
+
+extern unsigned long totalEvts, nCalls, minLatency, maxLatency;
+
+void KeccakF1600_StatePermute_vector(void *state)
+{
+    unsigned int round;
+
+    for(round=0; round<24; round++) {
+        unsigned long start, stop;
+        start = read_instret();
+        KeccakF1600_Round_vector(state, round);
+        stop = read_instret();
+        long cycleCnt = (stop - start);
+        nCalls++;
+        totalEvts += cycleCnt;
+        if (cycleCnt < minLatency) minLatency = cycleCnt;
+        if (cycleCnt > maxLatency) maxLatency = cycleCnt;
+
+    }
+}
