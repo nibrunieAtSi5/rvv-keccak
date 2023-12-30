@@ -28,7 +28,7 @@ KECCAK_SRC ?= keccak-vector.c # Keccak-more-compact.c
 KECCAK_WRAPPER_SRC ?= keccak-vector-wrapper.c
 
 keccak.o: $(KECCAK_SRC) 
-	 $(RISCVCC) $(CFLAGS) -c -menable-experimental-extensions -march=rv64gcv$(CLANG_EXTRA_EXTS) $^ -o $@
+	 $(RISCVCC) $(CFLAGS) -I./ -c -menable-experimental-extensions -march=rv64gcv$(CLANG_EXTRA_EXTS) $^ -o $@
 
 bench_keccak: Keccak-compact-test.c $(KECCAK_WRAPPER_SRC) keccak.o genKAT.c
 	 $(RISCVGNUCC) $(CFLAGS) -march=rv64gcv $^ -o $@
