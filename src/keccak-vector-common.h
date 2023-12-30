@@ -32,6 +32,21 @@ static vuint64m4_t __riscv_vrol_vv_u64m4(vuint64m4_t data, vuint64m4_t rots, siz
                                            vl);
     return res;
 }
+
+static vuint64m8_t __riscv_vrol_vv_u64m8(vuint64m8_t data, vuint64m8_t rots, size_t vl){
+    vuint64m8_t rotsComp = __riscv_vrsub_vx_u64m8(rots, 64, vl); 
+    vuint64m8_t res = __riscv_vor_vv_u64m8(__riscv_vsll_vv_u64m8(data, rots,      vl),
+                                           __riscv_vsrl_vv_u64m8(data, rotsComp, vl),
+                                           vl);
+    return res;
+}
+
+static vuint64m4_t __riscv_vandn_vv_u64m4(vuint64m4_t vs2, vuint64m4_t vs1, size_t vl){
+    vuint64m4_t res = __riscv_vand_vv_u64m4(__riscv_vnot_v_u64m4(vs1, vl),
+                                            vs2,
+                                            vl);
+    return res;
+}
 #endif // ifdef NO_ZVBB_INTRINSICS
 
 /** return the value of the instret counter
