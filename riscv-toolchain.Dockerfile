@@ -75,6 +75,13 @@ RUN git submodule update --init --recursive
 WORKDIR $RISCV_SRCS/riscv-gnu-toolchain
 RUN make build-llvm -j5
 
+WORKDIR $RISCV_SRCS/riscv-gnu-toolchain/spike
+RUN git remote add nibrunieAtSi5 https://github.com/nibrunieAtSi5//riscv-isa-sim.git
+RUN git fetch nibrunieAtSi5
+RUN git checkout nibrunieAtSi5/keccak-full-insn
+WORKDIR $RISCV_SRCS/riscv-gnu-toolchain
+RUN make stamps/build-spike -j5
+RUN make install
 
 # Defaulting to the /home/app directory (where we are going to bind the rvv-examples directory)
 WORKDIR /home/app

@@ -12,14 +12,14 @@ RISCVGNUCC=riscv64-unknown-elf-gcc
 
 # architectural parameters for the simulation
 # width of vector registers (VLEN)
-VLEN?=128
+VLEN?=256
 
 # path to proxy-kernel (pk)
 PK_PATH=/opt/riscv/riscv64-unknown-elf/bin/pk64 
 
 # SIMULATOR
 # Available options in the Docker (uncomment one)
-SIMULATOR=spike --isa=rv64gcv_zicntr_zihpm_zvbb_zbb_zbc_zba --varch=vlen:$(VLEN),elen:64 $(PK_PATH)
+SIMULATOR=spike --isa=rv64gcv_zicntr_zihpm_zvbb_zbb_zbc_zba_zvkk --varch=vlen:$(VLEN),elen:64 $(PK_PATH)
 # SIMULATOR=qemu-riscv64 -perfmap -cpu rv64,zba=true,v=on,vext_spec=v1.0,vlen=128,rvv_ta_all_1s=on
 
 CFLAGS ?= -O2
