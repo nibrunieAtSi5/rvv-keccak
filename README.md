@@ -42,3 +42,20 @@ For example:
 ```
 make sim_bench_keccak KECCAK_SRC=keccak-vector.c KECCAK_WRAPPER_SRC=keccak-vector-wrapper.c CFLAGS="-O3"
 ```
+
+## running without Zvbb support
+
+By default the benchmark assumes that the target has support for the **Zvbb** (vector bit manipulation) extension.
+The source code and the benchmark support disabling this extension:
+
+```
+make clean
+make sim_bench_keccak CLANG_EXTRA_EXTS= SPIKE_EXTRA_EXTS= EXTRA_CFLAGS="-DNO_ZVBB_INTRINSICS"
+```
+
+In the code snippet below, use of scalar bit manipulation extensions has also been disabled, to enable it:
+
+```
+make clean
+make sim_bench_keccak CLANG_EXTRA_EXTS=_zbb_zbc_zba SPIKE_EXTRA_EXTS=_zbb_zbc_zba EXTRA_CFLAGS="-DNO_ZVBB_INTRINSICS"
+```
