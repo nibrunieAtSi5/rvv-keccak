@@ -4,7 +4,7 @@
 #include <inttypes.h>
 #include <assert.h>
 
-#include <keccak-vector-common.h>
+#include "keccak-vector-common.h"
 
 
 /** RVV implementation of Keccak-F1600 round function 
