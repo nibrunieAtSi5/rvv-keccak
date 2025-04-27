@@ -46,7 +46,7 @@ void KeccakF1600_StatePermute_vector(void *state)
             row4 = __riscv_vxor_vv_u64m4(row4, D, 5);
 
         }
-#       if 1 // set to 0 to enable in-register rho and pi steps
+#       if defined(IN_MEMORY_RHO_PI) // do not define IN_MEMORY_RHO_PI to enable in-register rho and pi steps
         /* === in-memory ρ and π steps */
         {
 
@@ -99,7 +99,7 @@ void KeccakF1600_StatePermute_vector(void *state)
             row3 = __riscv_vle64_v_u64m4(((uint64_t*)state) + 15, 5);
             row4 = __riscv_vle64_v_u64m4(((uint64_t*)state) + 20, 5);
         }
-#       else // in-memory rho and pi steps
+#       else // !defined(IN_MEMORY_RHO_PI) in-memory rho and pi steps
         /* === in-register ρ and π steps === */
         {
             // building two inputs set
