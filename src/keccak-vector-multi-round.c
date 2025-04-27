@@ -1,20 +1,19 @@
 #include <riscv_vector.h>
-#include <stdio.h>
-#include <string.h>
 #include <inttypes.h>
 #include <assert.h>
 #include <keccak-vector-common.h>
 
+#include "bench_utils.h"
 
 
-extern unsigned long totalEvts, nCalls, minLatency, maxLatency;
+extern unsigned long totalEvts, nCalls, minPerfCount, maxPerfCount;
 
 void KeccakF1600_StatePermute_vector(void *state)
 {
     unsigned int round;
 
     unsigned long start, stop;
-    start = read_instret();
+    start = read_perf_counter();
 
     // initial state loading
     vuint64m4_t row0 = __riscv_vle64_v_u64m4(((uint64_t*)state) + 0, 5);
@@ -241,10 +240,10 @@ void KeccakF1600_StatePermute_vector(void *state)
     __riscv_vse64_v_u64m4((uint64_t*)state + 15, row3, 5);
     __riscv_vse64_v_u64m4((uint64_t*)state + 20, row4, 5);
 
-    stop = read_instret();
-    long cycleCnt = (stop - start);
+    stop = read_perf_counter();
+    long perfCnt = (stop - start);
     nCalls += 24;
-    totalEvts += cycleCnt;
-    if (cycleCnt < minLatency) minLatency = cycleCnt;
-    if (cycleCnt > maxLatency) maxLatency = cycleCnt;
+    totalEvts += perfCnt;
+    if (perfCnt < minPerfCount) minPerfCount = perfCnt;
+    if (perfCnt > maxPerfCount) maxPerfCount = perfCnt;
 }

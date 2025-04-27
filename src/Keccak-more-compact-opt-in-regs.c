@@ -1,3 +1,5 @@
+#include "bench_utils.h"
+
 // source: https://github.com/XKCP/XKCP/blob/master/Standalone/CompactFIPS202/C/Keccak-more-compact.c
 #define FOR(i,n) for(i=0; i<n; ++i)
 typedef unsigned char u8;
@@ -18,18 +20,8 @@ int LFSR86540(u8 *R) { (*R)=((*R)<<1)^(((*R)&0x80)?0x71:0); return ((*R)&2)>>1; 
 #define wL(x,y,l) do { ((u64*)s)[x+5*y] = l; } while (0)
 #define XL(x,y,l) do { ((u64*)s)[x+5*y] ^= l; } while (0)
 
-extern unsigned long totalEvts, nCalls, minLatency, maxLatency;
+extern unsigned long totalEvts, nCalls, minPerfCount, maxPerfCount;
 
-/** return the value of the instret counter
- *
- *  The instret counter counts the number of retired (executed) instructions.
-*/
-static unsigned long read_instret(void)
-{
-  unsigned long instret;
-  asm volatile ("rdinstret %0" : "=r" (instret));
-  return instret;
-}
 
 // round constants for ι step
 const u64 RC[25] = {
@@ -62,7 +54,7 @@ const u64 RC[25] = {
 void KeccakF1600(void *s)
 {
     unsigned long start, stop;
-    start = read_instret();
+    start = read_perf_counter();
     ui r,x,y,i,j,Y; u8 R=0x01; u64 C[5],D;
     // prolog: loading state
     u64 A_0_0 = rL(0, 0);
@@ -254,12 +246,12 @@ void KeccakF1600(void *s)
     wL(4, 2, A_4_2);
     wL(4, 3, A_4_3);
     wL(4, 4, A_4_4);
-    stop = read_instret();
-    long cycleCnt = (stop - start);
-    nCalls += 24;
-    totalEvts += cycleCnt;
-    if (cycleCnt < minLatency) minLatency = cycleCnt;
-    if (cycleCnt > maxLatency) maxLatency = cycleCnt;
+    stop = read_perf_counter();
+    long perfCnt = (stop - start);
+    nCalls++;
+    totalEvts += perfCnt;
+    if (perfCnt < minPerfCount) minPerfCount = perfCnt;
+    if (perfCnt > maxPerfCount) maxPerfCount = perfCnt;
 }
 void Keccak(ui r, ui c, const u8 *in, u64 inLen, u8 sfx, u8 *out, u64 outLen)
 {
