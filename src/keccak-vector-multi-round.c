@@ -22,6 +22,31 @@ void KeccakF1600_StatePermute_vector(void *state)
     vuint64m4_t row3 = __riscv_vle64_v_u64m4(((uint64_t*)state) + 15, 5);
     vuint64m4_t row4 = __riscv_vle64_v_u64m4(((uint64_t*)state) + 20, 5);
 
+#if defined(IN_MEMORY_RHO_PI) // do not define IN_MEMORY_RHO_PI to enable in-register rho and pi steps
+    // indices and rotations generated with script/utils.py
+    uint16_t offset_AtoB[] = {
+        // byte offset for each index
+        0, 48, 96, 144, 192, 
+        24, 72, 80, 128, 176, 
+        8, 56, 104, 152, 160, 
+        32, 40, 88, 136, 184, 
+        16, 64, 112, 120, 168, 
+    };
+    uint64_t rotation_B[] = {
+        0, 44, 43, 21, 14, 
+        28, 20, 3, 45, 61, 
+        1, 6, 25, 8, 18, 
+        27, 36, 10, 15, 56, 
+        62, 55, 39, 41, 2, 
+    };
+
+    vuint16m2_t B_index_0 = __riscv_vle16_v_u16m2(offset_AtoB, 16);
+    vuint16m2_t B_index_1 = __riscv_vle16_v_u16m2(offset_AtoB + 16, 9);
+    vuint64m8_t B_rots_0 = __riscv_vle64_v_u64m8(rotation_B, 16);
+    vuint64m8_t B_rots_1 = __riscv_vle64_v_u64m8(rotation_B + 16, 9);
+
+#endif
+
     for(round=0; round<24; round++) {
         {   /* === θ step (see [Keccak Reference, Section 2.3.2]) === */
             vuint64m4_t C_01 = __riscv_vxor_vv_u64m4(row0, row1, 5);
@@ -57,34 +82,14 @@ void KeccakF1600_StatePermute_vector(void *state)
             __riscv_vse64_v_u64m4((uint64_t*)state + 20, row4, 5);
         }
         {
-            // indices and rotations generated with script/utils.py
-            uint16_t offset_AtoB[] = {
-                // byte offset for each index
-                0, 48, 96, 144, 192, 
-                24, 72, 80, 128, 176, 
-                8, 56, 104, 152, 160, 
-                32, 40, 88, 136, 184, 
-                16, 64, 112, 120, 168, 
-            };
-            uint64_t rotation_B[] = {
-                0, 44, 43, 21, 14, 
-                28, 20, 3, 45, 61, 
-                1, 6, 25, 8, 18, 
-                27, 36, 10, 15, 56, 
-                62, 55, 39, 41, 2, 
-            };
 
             // The following assumes VLEN >= 128, and uses 2x 8-register groups to load/transpose 
             // matrix A to B
             // First 16 elements [0...15]
-            vuint16m2_t B_index_0 = __riscv_vle16_v_u16m2(offset_AtoB, 16);
             vuint64m8_t B_0 = __riscv_vluxei16_v_u64m8(state, B_index_0, 16);
-            vuint64m8_t B_rots_0 = __riscv_vle64_v_u64m8(rotation_B, 16);
             B_0 = __riscv_vrol_vv_u64m8(B_0, B_rots_0, 16);
             // Last 9 elements [16...24]
-            vuint16m2_t B_index_1 = __riscv_vle16_v_u16m2(offset_AtoB + 16, 9);
             vuint64m8_t B_1 = __riscv_vluxei16_v_u64m8(state, B_index_1, 9);
-            vuint64m8_t B_rots_1 = __riscv_vle64_v_u64m8(rotation_B + 16, 9);
             B_1 = __riscv_vrol_vv_u64m8(B_1, B_rots_1, 9);
             // To avoid state corruption, B partial results can only be stored once indexed load accesses
             // have all been completed.
