@@ -5,11 +5,11 @@
 # clang/llvm
 CLANG_EXTRA_EXTS ?= _zvbb1p0_zbb_zbc_zba
 SPIKE_EXTRA_EXTS ?= _zvbb_zbb_zbc_zba
-RISCVCC=clang  --target=riscv64 -I/opt/riscv/riscv64-unknown-elf/include/
+RISCVCC=clang  --target=riscv64  # -I/opt/riscv/riscv64-unknown-elf/include/
 # GNU Compiler Collection (GCC)
 # RISCVCC=riscv64-unknown-elf-gcc 
 
-RISCVGNUCC=riscv64-unknown-elf-gcc 
+RISCVGNUCC ?= riscv64-unknown-elf-gcc 
 
 # architectural parameters for the simulation
 # width of vector registers (VLEN)
