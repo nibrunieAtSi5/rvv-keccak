@@ -17,6 +17,7 @@ http://creativecommons.org/publicdomain/zero/1.0/
 #include <string.h>
 #include <limits.h>
 
+#include "bench_utils.h"
 
 #ifdef VERBOSE
 #include <stdio.h>
@@ -24,16 +25,6 @@ http://creativecommons.org/publicdomain/zero/1.0/
 
 void Keccak(int rate, int capacity, const unsigned char *input, unsigned long long int inputByteLen, unsigned char delimitedSuffix, unsigned char *output, unsigned long long int outputByteLen);
 
-/** return the value of the instret counter
- *
- *  The instret counter counts the number of retired (executed) instructions.
-*/
-static unsigned long read_instret(void)
-{
-  unsigned long instret;
-  asm volatile ("rdinstret %0" : "=r" (instret));
-  return instret;
-}
 
 #ifdef TestAtBitLevel
 
@@ -110,7 +101,7 @@ void testKeccakInstanceBitLevel(unsigned int rate, unsigned int capacity, const 
 #endif
 
 unsigned long totalEvts = 0, nCalls = 0;
-unsigned long minLatency = ULONG_MAX, maxLatency = 0;
+unsigned long minPerfCount = ULONG_MAX, maxPerfCount = 0;
 
 void performTestByteLevel(unsigned int rate, unsigned int capacity, unsigned char delimitedSuffix, unsigned int outputByteLength, unsigned char *checksum)
 {
@@ -170,10 +161,10 @@ void performTestByteLevel(unsigned int rate, unsigned int capacity, unsigned cha
         printf("\n\n");
     }
 #endif
-    printf("%ld Keccak call(s) executed %ld instruction(s).\n", nCalls, totalEvts);
-    printf("    - %.3e instruction(s) per call\n", totalEvts / (double) nCalls);
-    printf("    - min %ld instruction(s)\n", minLatency);
-    printf("    - max %ld instruction(s)\n", maxLatency);
+    printf("%ld Keccak call(s) executed %ld " PERF_METRIC "(s).\n", nCalls, totalEvts);
+    printf("    - %.3e " PERF_METRIC "(s) per call\n", totalEvts / (double) nCalls);
+    printf("    - min %ld " PERF_METRIC "(s)\n", minPerfCount);
+    printf("    - max %ld " PERF_METRIC "(s)\n", maxPerfCount);
 }
 
 void testKeccakInstanceByteLevel(unsigned int rate, unsigned int capacity, unsigned char delimitedSuffix, unsigned int outputByteLength, const unsigned char *expected)

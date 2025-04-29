@@ -6,6 +6,8 @@
 
 #include "keccak-vector-common.h"
 
+#include "bench_utils.h"
+
 
 /** RVV implementation of Keccak-F1600 round function 
  * Function that computes the Keccak-f[1600] permutation on the given state.
@@ -117,7 +119,7 @@ void KeccakF1600_Round_vector(void *state, unsigned round)
 */
 void KeccakF1600_Round_vector(void *state, unsigned round);
 
-extern unsigned long totalEvts, nCalls, minLatency, maxLatency;
+extern unsigned long totalEvts, nCalls, minPerfCount, maxPerfCount;
 
 void KeccakF1600_StatePermute_vector(void *state)
 {
@@ -125,14 +127,14 @@ void KeccakF1600_StatePermute_vector(void *state)
 
     for(round=0; round<24; round++) {
         unsigned long start, stop;
-        start = read_instret();
+        start = read_perf_counter();
         KeccakF1600_Round_vector(state, round);
-        stop = read_instret();
-        long cycleCnt = (stop - start);
+        stop = read_perf_counter();
+        long perfCnt = (stop - start);
         nCalls++;
-        totalEvts += cycleCnt;
-        if (cycleCnt < minLatency) minLatency = cycleCnt;
-        if (cycleCnt > maxLatency) maxLatency = cycleCnt;
+        totalEvts += perfCnt;
+        if (perfCnt < minPerfCount) minPerfCount = perfCnt;
+        if (perfCnt > maxPerfCount) maxPerfCount = perfCnt;
 
     }
 }

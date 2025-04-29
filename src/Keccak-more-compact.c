@@ -1,3 +1,5 @@
+#include "bench_utils.h"
+
 // source: https://github.com/XKCP/XKCP/blob/master/Standalone/CompactFIPS202/C/Keccak-more-compact.c
 #define FOR(i,n) for(i=0; i<n; ++i)
 typedef unsigned char u8;
@@ -21,23 +23,13 @@ static void xor64(u8 *x, u64 u) { ui i; FOR(i,8) { x[i]^=u; u>>=8; } }
 #define wL(x,y,l) store64((u8*)s+8*(x+5*y),l)
 #define XL(x,y,l) xor64((u8*)s+8*(x+5*y),l)
 
-extern unsigned long totalEvts, nCalls, minLatency, maxLatency;
+extern unsigned long totalEvts, nCalls, minPerfCount, maxPerfCount;
 
-/** return the value of the instret counter
- *
- *  The instret counter counts the number of retired (executed) instructions.
-*/
-static unsigned long read_instret(void)
-{
-  unsigned long instret;
-  asm volatile ("rdinstret %0" : "=r" (instret));
-  return instret;
-}
 
 void KeccakF1600(void *s)
 {
     unsigned long start, stop;
-    start = read_instret();
+    start = read_perf_counter();
     ui r,x,y,i,j,Y; u8 R=0x01; u64 C[5],D;
     for(i=0; i<24; i++) {
         /*θ*/ FOR(x,5) C[x]=rL(x,0)^rL(x,1)^rL(x,2)^rL(x,3)^rL(x,4); FOR(x,5) { D=C[(x+4)%5]^ROL(C[(x+1)%5],1); FOR(y,5) XL(x,y,D); }
@@ -45,12 +37,12 @@ void KeccakF1600(void *s)
         /*χ*/ FOR(y,5) { FOR(x,5) C[x]=rL(x,y); FOR(x,5) wL(x,y,C[x]^((~C[(x+1)%5])&C[(x+2)%5])); }
         /*ι*/ FOR(j,7) if (LFSR86540(&R)) XL(0,0,(u64)1<<((1<<j)-1));
     }
-    stop = read_instret();
-    long cycleCnt = (stop - start);
-    nCalls += 24;
-    totalEvts += cycleCnt;
-    if (cycleCnt < minLatency) minLatency = cycleCnt;
-    if (cycleCnt > maxLatency) maxLatency = cycleCnt;
+    stop = read_perf_counter();
+    long perfCnt = (stop - start);
+    nCalls++;
+    totalEvts += perfCnt;
+    if (perfCnt < minPerfCount) minPerfCount = perfCnt;
+    if (perfCnt > maxPerfCount) maxPerfCount = perfCnt;
 }
 void Keccak(ui r, ui c, const u8 *in, u64 inLen, u8 sfx, u8 *out, u64 outLen)
 {
