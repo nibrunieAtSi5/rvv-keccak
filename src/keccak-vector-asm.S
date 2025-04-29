@@ -8,6 +8,7 @@
 KeccakF1600_Round_vector:               # @KeccakF1600_Round_vector
 # %bb.0:
 	vsetivli	zero, 5, e64, m4, ta, ma
+	// loading state
 	vle64.v	v8, (a0)
 	addi	a5, a0, 40
 	vle64.v	v12, (a5)
@@ -17,31 +18,40 @@ KeccakF1600_Round_vector:               # @KeccakF1600_Round_vector
 	vle64.v	v20, (a7)
 	addi	a6, a0, 160
 	vle64.v	v24, (a6)
+	// computing C
 	vxor.vv	v28, v8, v12
 	vxor.vv	v0, v16, v20
 	vxor.vv	v28, v28, v24
 	vxor.vv	v28, v0, v28
+	// computing D
 	vsetivli	zero, 1, e64, m4, ta, ma
 	vslidedown.vi	v0, v28, 4
 	vsetivli	zero, 5, e64, m4, ta, ma
 	vslideup.vi	v0, v28, 1
 	vslidedown.vi	v4, v28, 1
 	vslideup.vi	v4, v28, 4
+	// left rotation by 1
 	vadd.vv	v28, v4, v4
 	li	a2, 63
 	vsrl.vx	v4, v4, a2
 	vor.vv	v28, v28, v4
+	// final D computation
 	vxor.vv	v28, v28, v0
+
+	// xoring D into A
 	vxor.vv	v8, v8, v28
 	vxor.vv	v12, v12, v28
 	vxor.vv	v16, v16, v28
 	vxor.vv	v20, v20, v28
 	vxor.vv	v24, v24, v28
+
+	// storing back state in memory
 	vse64.v	v8, (a0)
 	vse64.v	v12, (a5)
 	vse64.v	v16, (t0)
 	vse64.v	v20, (a7)
 	vse64.v	v24, (a6)
+
 .Lpcrel_hi0:
 	auipc	a2, %pcrel_hi(.L__const.KeccakF1600_Round_vector.offset_AtoB)
 	addi	a2, a2, %pcrel_lo(.Lpcrel_hi0)
@@ -86,12 +96,12 @@ KeccakF1600_Round_vector:               # @KeccakF1600_Round_vector
 .Lpcrel_hi2:
 	auipc	a2, %pcrel_hi(RC)
 	addi	a2, a2, %pcrel_lo(.Lpcrel_hi2)
-	sh3add.uw	a1, a1, a2
-	ld	a1, 0(a1)
+	sh3add.uw	t1, a1, a2
+	ld	t1, 0(t1)
 	vand.vv	v12, v12, v16
 	vxor.vv	v8, v8, v12
 	vsetivli	zero, 1, e64, m4, tu, ma
-	vxor.vx	v8, v8, a1
+	vxor.vx	v8, v8, t1
 	vsetivli	zero, 5, e64, m4, ta, ma
 	vse64.v	v8, (a0)
 	vle64.v	v8, (a5)
@@ -146,6 +156,9 @@ KeccakF1600_Round_vector:               # @KeccakF1600_Round_vector
 	vand.vv	v12, v12, v16
 	vxor.vv	v8, v8, v12
 	vse64.v	v8, (a6)
+	addi a1, a1, 1
+	addi t1, a1, -24
+	bnez t1, KeccakF1600_Round_vector
 	ret
 .Lfunc_end0:
 	.size	KeccakF1600_Round_vector, .Lfunc_end0-KeccakF1600_Round_vector

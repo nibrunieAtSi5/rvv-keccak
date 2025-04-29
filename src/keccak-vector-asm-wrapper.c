@@ -23,10 +23,10 @@ void KeccakF1600_StatePermute_vector(void *state)
 {
     unsigned int round;
 
-    for(round=0; round<24; round++) {
+    //for(round=0; round<24; round++) {
         unsigned long start, stop;
         start = read_perf_counter();
-        KeccakF1600_Round_vector(state, round);
+        KeccakF1600_Round_vector(state, 0);
         stop = read_perf_counter();
         long perfCnt = (stop - start);
         nCalls++;
@@ -34,5 +34,5 @@ void KeccakF1600_StatePermute_vector(void *state)
         if (perfCnt < minPerfCount) minPerfCount = perfCnt;
         if (perfCnt > maxPerfCount) maxPerfCount = perfCnt;
 
-    }
+    //}
 }
