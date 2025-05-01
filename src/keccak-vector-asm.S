@@ -18,6 +18,186 @@ KeccakF1600_Round_vector:               # @KeccakF1600_Round_vector
 	vle64.v	v20, (a7)
 	addi	a6, a0, 160
 	vle64.v	v24, (a6)
+
+	// computing C
+
+    // u64 C_0= A_0_0 ^ A_0_1 ^ A_0_2 ^ A_0_3 ^ A_0_4;
+    // u64 C_1= A_1_0 ^ A_1_1 ^ A_1_2 ^ A_1_3 ^ A_1_4;
+    // u64 C_2= A_2_0 ^ A_2_1 ^ A_2_2 ^ A_2_3 ^ A_2_4;
+    // u64 C_3= A_3_0 ^ A_3_1 ^ A_3_2 ^ A_3_3 ^ A_3_4;
+    // u64 C_4= A_4_0 ^ A_4_1 ^ A_4_2 ^ A_4_3 ^ A_4_4;
+	vsetivli	zero, 4, e64, m2, ta, ma
+	// C[0:3] stored in v2v3
+	vxor.vv	v0, v8, v12
+	vxor.vv	v1, v16, v20
+	vxor.vv	v2, v0, v24
+	vxor.vv	v2, v2, v1
+
+	// C[4], stored in v4[0], and v6[0]
+	vsetivli  zero, 1, e64, m1, ta, ma
+	vxor.vv   v4, v10, v14
+	vxor.vv   v5, v18, v22
+	vxor.vv   v6, v4, v26
+	vxor.vv   v4, v6, v5
+	// copying C[4] to v6[0]
+	vmv.v	v6, v4
+
+	// rot(C[0], 1) in v30[0], using v30 as temp
+	vsll.vi v31, v2, 1
+	vsrl.vi v30, v2, 63
+	vor.vv v30, v30, v31
+
+	// {C[1:3], C{4}} stored in v0v1 
+	vsetivli  zero, 3, e64, m2, tu, ma
+	vslidedown.vi v0, v2, 1 
+	vsetivli  zero, 2, e64, m1, tu, ma
+	vslideup.vi v1, v6, 1
+
+	// extracting C[3] from v1[0] 
+	// building D[4] in v30[0]
+	vsetivli  zero, 1, e64, m1, tu, ma // could be skipped, reusing vl=2, m1 from before
+	vxor.vv v30, v30, v1
+
+	// {C[4], C[0:2]} stored in v4v5
+	vsetivli  zero, 4, e64, m2, tu, ma
+	vslideup.vi v4, v2, 1 
+
+	// {D[0:3]} stored in v0v1
+	vsetivli  zero, 4, e64, m2, tu, ma
+	// rot({C[1:3], C[4]}, 1) in v0v1, using v28v29 as temp
+	vsll.vi v28, v0, 1
+	vsrl.vi v0, v0, 63
+	vor.vv v0, v28, v0
+	vxor.vv v0, v0, v4
+
+	// end of theta step
+	// A_<0:3>_0 = A_<0:3>_0 ^ D[0:3]
+	vxror.vv v8, v8, v0
+	// A_<0:3>_1 = A_<0:3>_1 ^ D[0:3]
+	vxror.vv v12, v12, v0
+	// A_<0:3>_2 = A_<0:3>_2 ^ D[0:3]
+	vxror.vv v16, v16, v0
+	// A_<0:3>_3 = A_<0:3>_3 ^ D[0:3]
+	vxror.vv v20, v20, v0
+	// A_<0:3>_4 = A_<0:3>_4 ^ D[0:3]
+	vxror.vv v24, v24, v0
+
+	vsetivli	zero, 1, e64, m1, ta, ma
+	// A_<4>_0 = A_<4>_0 ^ D[4]
+	vxor.vv v10, v10, v30
+	// A_<4>_1 = A_<4>_1 ^ D[4]
+	vxor.vv v14, v14, v30
+	// A_<4>_2 = A_<4>_2 ^ D[4]
+	vxor.vv v18, v18, v30
+	// A_<4>_3 = A_<4>_3 ^ D[4]
+	vxor.vv v22, v22, v30
+	// A_<4>_4 = A_<4>_4 ^ D[4]
+	vxor.vv v26, v26, v30
+
+    // u64 T_0 = A_1_0;
+    // u64 T_1 = A_0_2;
+    // A_0_2 = ROL(T_0, 1);
+    // u64 T_2 = A_2_1;
+    // A_2_1 = ROL(T_1, 3);
+    // u64 T_3 = A_1_2;
+    // A_1_2 = ROL(T_2, 6);
+    // u64 T_4 = A_2_3;
+    // A_2_3 = ROL(T_3, 10);
+    // u64 T_5 = A_3_3;
+    // A_3_3 = ROL(T_4, 15);
+    // u64 T_6 = A_3_0;
+    // A_3_0 = ROL(T_5, 21);
+    // u64 T_7 = A_0_1;
+    // A_0_1 = ROL(T_6, 28);
+    // u64 T_8 = A_1_3;
+    // A_1_3 = ROL(T_7, 36);
+    // u64 T_9 = A_3_1;
+    // A_3_1 = ROL(T_8, 45);
+    // u64 T_10 = A_1_4;
+    // A_1_4 = ROL(T_9, 55);
+    // u64 T_11 = A_4_4;
+    // A_4_4 = ROL(T_10, 2);
+    // u64 T_12 = A_4_0;
+    // A_4_0 = ROL(T_11, 14);
+    // u64 T_13 = A_0_3;
+    // A_0_3 = ROL(T_12, 27);
+    // u64 T_14 = A_3_4;
+    // A_3_4 = ROL(T_13, 41);
+    // u64 T_15 = A_4_3;
+    // A_4_3 = ROL(T_14, 56);
+    // u64 T_16 = A_3_2;
+    // A_3_2 = ROL(T_15, 8);
+    // u64 T_17 = A_2_2;
+    // A_2_2 = ROL(T_16, 25);
+    // u64 T_18 = A_2_0;
+    // A_2_0 = ROL(T_17, 43);
+    // u64 T_19 = A_0_4;
+    // A_0_4 = ROL(T_18, 62);
+    // u64 T_20 = A_4_2;
+    // A_4_2 = ROL(T_19, 18);
+    // u64 T_21 = A_2_4;
+    // A_2_4 = ROL(T_20, 39);
+    // u64 T_22 = A_4_1;
+    // A_4_1 = ROL(T_21, 61);
+    // u64 T_23 = A_1_1;
+    // A_1_1 = ROL(T_22, 20);
+    // u64 T_24 = A_1_0;
+    // A_1_0 = ROL(T_23, 44);
+    // u64 C_0_0 = A_0_0;
+    // u64 C_0_1 = A_1_0;
+    // u64 C_0_2 = A_2_0;
+    // u64 C_0_3 = A_3_0;
+    // u64 C_0_4 = A_4_0;
+    // A_0_0 = C_0_0 ^ (~C_0_1 & C_0_2);
+    // A_1_0 = C_0_1 ^ (~C_0_2 & C_0_3);
+    // A_2_0 = C_0_2 ^ (~C_0_3 & C_0_4);
+    // A_3_0 = C_0_3 ^ (~C_0_4 & C_0_0);
+    // A_4_0 = C_0_4 ^ (~C_0_0 & C_0_1);
+    // u64 C_1_0 = A_0_1;
+    // u64 C_1_1 = A_1_1;
+    // u64 C_1_2 = A_2_1;
+    // u64 C_1_3 = A_3_1;
+    // u64 C_1_4 = A_4_1;
+    // A_0_1 = C_1_0 ^ (~C_1_1 & C_1_2);
+    // A_1_1 = C_1_1 ^ (~C_1_2 & C_1_3);
+    // A_2_1 = C_1_2 ^ (~C_1_3 & C_1_4);
+    // A_3_1 = C_1_3 ^ (~C_1_4 & C_1_0);
+    // A_4_1 = C_1_4 ^ (~C_1_0 & C_1_1);
+    // u64 C_2_0 = A_0_2;
+    // u64 C_2_1 = A_1_2;
+    // u64 C_2_2 = A_2_2;
+    // u64 C_2_3 = A_3_2;
+    // u64 C_2_4 = A_4_2;
+    // A_0_2 = C_2_0 ^ (~C_2_1 & C_2_2);
+    // A_1_2 = C_2_1 ^ (~C_2_2 & C_2_3);
+    // A_2_2 = C_2_2 ^ (~C_2_3 & C_2_4);
+    // A_3_2 = C_2_3 ^ (~C_2_4 & C_2_0);
+    // A_4_2 = C_2_4 ^ (~C_2_0 & C_2_1);
+    // u64 C_3_0 = A_0_3;
+    // u64 C_3_1 = A_1_3;
+    // u64 C_3_2 = A_2_3;
+    // u64 C_3_3 = A_3_3;
+    // u64 C_3_4 = A_4_3;
+    // A_0_3 = C_3_0 ^ (~C_3_1 & C_3_2);
+    // A_1_3 = C_3_1 ^ (~C_3_2 & C_3_3);
+    // A_2_3 = C_3_2 ^ (~C_3_3 & C_3_4);
+    // A_3_3 = C_3_3 ^ (~C_3_4 & C_3_0);
+    // A_4_3 = C_3_4 ^ (~C_3_0 & C_3_1);
+    // u64 C_4_0 = A_0_4;
+    // u64 C_4_1 = A_1_4;
+    // u64 C_4_2 = A_2_4;
+    // u64 C_4_3 = A_3_4;
+    // u64 C_4_4 = A_4_4;
+    // A_0_4 = C_4_0 ^ (~C_4_1 & C_4_2);
+    // A_1_4 = C_4_1 ^ (~C_4_2 & C_4_3);
+    // A_2_4 = C_4_2 ^ (~C_4_3 & C_4_4);
+    // A_3_4 = C_4_3 ^ (~C_4_4 & C_4_0);
+    // A_4_4 = C_4_4 ^ (~C_4_0 & C_4_1);
+    // /*ι*/ // XL(0,0,RC[i]);
+    // A_0_0 ^= RC[i];
+
+
+
 	// computing C
 	vxor.vv	v28, v8, v12
 	vxor.vv	v0, v16, v20
@@ -52,6 +232,7 @@ KeccakF1600_Round_vector:               # @KeccakF1600_Round_vector
 	vse64.v	v20, (a7)
 	vse64.v	v24, (a6)
 
+	// rho and pi steps
 .Lpcrel_hi0:
 	auipc	a2, %pcrel_hi(.L__const.KeccakF1600_Round_vector.offset_AtoB)
 	addi	a2, a2, %pcrel_lo(.Lpcrel_hi0)
@@ -156,6 +337,7 @@ KeccakF1600_Round_vector:               # @KeccakF1600_Round_vector
 	vand.vv	v12, v12, v16
 	vxor.vv	v8, v8, v12
 	vse64.v	v8, (a6)
+
 	addi a1, a1, 1
 	addi t1, a1, -24
 	bnez t1, KeccakF1600_Round_vector
